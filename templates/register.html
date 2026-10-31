@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% block title %}Customer Registration{% endblock %}
+{% block content %}
+<div class="narrow panel"><div class="eyebrow">CUSTOMER PORTAL</div><h1>Create your account</h1><p class="muted">Register your account and associate one vehicle for this prototype.</p>
+<form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+<div class="form-grid">
+<div class="field wide"><label>Full name</label><input name="full_name" required placeholder="Your full name"></div>
+<div class="field"><label>User ID</label><input name="user_id" required placeholder="Choose a User ID"></div>
+<div class="field"><label>Mobile number</label><input name="mobile" required inputmode="numeric" placeholder="10-digit mobile number"></div>
+<div class="field"><label>Password (minimum 10 characters)</label><input type="password" name="password" required minlength="10" placeholder="Create a strong password"></div>
+<div class="field"><label>Vehicle type</label><select name="vehicle_type" required><option value="">Select vehicle type</option>{% for v in vehicle_types %}<option>{{ v }}</option>{% endfor %}</select></div>
+<div class="field wide"><label>Vehicle registration number</label><input name="vehicle_number" required placeholder="Example: TN23CW4719"></div>
+</div>
+<div class="notice">For this first version, registration uses User ID and password. OTP delivery is not enabled because it requires an SMS provider integration.</div>
+<button class="primary full">Create account</button></form><p class="center muted">Already registered? <a href="{{ url_for('login') }}">Login</a></p></div>
+{% endblock %}

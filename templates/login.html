@@ -1,0 +1,11 @@
+{% extends "base.html" %}{% block title %}Customer Login{% endblock %}
+{% block content %}
+<div class="auth-layout"><section class="hero-panel"><div class="eyebrow">CUSTOMER PORTAL</div><h1>Smarter journeys start with verified documents.</h1><p>Register your vehicle, upload required certificates and track your application in one place.</p><div class="hero-points"><span>✓ Secure account</span><span>✓ Document screening</span><span>✓ Application tracking</span></div></section>
+<section class="panel auth-panel"><div class="eyebrow">WELCOME BACK</div><h2>Customer login</h2><p class="muted">Sign in using your registered User ID.</p>
+<form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+<label>User ID</label><input name="user_id" required autocomplete="username" placeholder="Enter your User ID">
+<label>Password</label><input type="password" name="password" required autocomplete="current-password" placeholder="Enter your password">
+<button class="primary full">Login</button></form>
+<p class="center muted">New customer? <a href="{{ url_for('register') }}">Create an account</a></p>
+<p class="center small"><a href="{{ url_for('admin_login') }}">Administrator login</a></p></section></div>
+{% endblock %}

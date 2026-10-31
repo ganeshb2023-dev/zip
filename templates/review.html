@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% block title %}Review Application{% endblock %}
+{% block content %}
+<div class="page-head"><div><div class="eyebrow">FINAL REVIEW</div><h1>Review your documents</h1><p class="muted">Review OCR extraction, document-type detection and validity checks for all required documents.</p></div><a class="secondary" href="{{ url_for('customer_dashboard') }}">← Back</a></div>
+<div class="panel"><div class="summary-grid"><div class="stat"><span>Customer</span><strong>{{ user.full_name }}</strong></div><div class="stat"><span>Vehicle</span><strong>{{ user.vehicle_number }}</strong></div><div class="stat"><span>Type</span><strong>{{ user.vehicle_type }}</strong></div></div>
+{% for key,label in required %}
+{% set d = (docs|selectattr('doc_type','equalto',key)|list|first) %}
+<div class="review-row"><div><strong>{{ label }}</strong><p class="muted small">{{ d.original_name if d else 'Not uploaded' }}</p>{% if d %}<p class="small">{{ d.ai_reason }}</p>{% endif %}</div>
+{% if d %}<span class="pill {{ 'good' if d.ai_status == 'Passed checks' else 'bad' if d.ai_status == 'Invalid' else 'pending' }}">{{ d.ai_status }}</span>{% else %}<span class="pill bad">Missing</span>{% endif %}</div>
+{% endfor %}
+<div class="review-row"><div><strong>Webcam Face Authentication</strong><p class="small muted">{{ biometric.reason if biometric else 'Not completed. Capture a webcam photo on the dashboard (Demo Mode - only a human face check is done).' }}</p></div><span class="pill {{ 'good' if biometric and biometric.status in ['Matched','Captured'] else 'bad' if not biometric or biometric.status == 'Face not detected' else 'pending' }}">{{ biometric.status if biometric else 'Not captured' }}</span></div>
+<form method="post" action="{{ url_for('submit_application') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="primary full" {% if not all_required_uploaded or has_invalid_required or not biometric or not biometric.selfie_stored_name or biometric.status != 'Matched' %}disabled{% endif %}>Submit application to admin</button></form>
+<p class="small muted">Documents marked Invalid must be replaced. Needs review documents can be submitted for administrator assessment. Demo Mode: a captured webcam photo containing a human face is required. No face matching with the licence is performed. This is capture-based authentication, not actual biometric identity verification. Automated OCR checks do not authenticate government-issued certificates.</p></div>
+{% endblock %}

@@ -1,0 +1,4 @@
+{% extends "base.html" %}{% block title %}Admin Login{% endblock %}
+{% block content %}<div class="narrow panel"><div class="eyebrow">RESTRICTED AREA</div><h1>Administrator login</h1><p class="muted">Authorized staff only.</p>
+<form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><label>Admin username</label><input name="username" required><label>Password</label><input type="password" name="password" required><button class="primary full">Secure login</button></form>
+<p class="small muted">Demo credentials are documented in README.md. Change them before deployment.</p></div>{% endblock %}

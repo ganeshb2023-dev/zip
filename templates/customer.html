@@ -1,0 +1,100 @@
+{% extends "base.html" %}{% block title %}Customer Dashboard{% endblock %}
+{% block content %}
+<div class="page-head"><div><div class="eyebrow">CUSTOMER WORKSPACE</div><h1>Hello, {{ user.full_name }}</h1><p class="muted">Manage your vehicle documents and application.</p></div><span class="pill">{{ application.status }}</span></div>
+<div class="summary-grid"><div class="stat"><span>Vehicle number</span><strong>{{ user.vehicle_number }}</strong></div><div class="stat"><span>Vehicle type</span><strong>{{ user.vehicle_type }}</strong></div><div class="stat"><span>Application</span><strong>#{{ application.id }}</strong></div></div>
+{% if exempt %}<div class="notice success"><strong>{{ user.vehicle_type }} category:</strong> This prototype marks this vehicle type as toll-document exempt, as requested. No certificate upload is required in this workflow.</div>
+{% else %}
+<div class="section-head"><div><h2>AI-assisted document verification</h2><p class="muted">After upload, OCR reads the document and checks its document type, key fields and relevant validity dates. Uncertain results go to admin review.</p></div><a class="secondary" href="{{ url_for('review') }}">Review application →</a></div>
+<div class="doc-grid">
+{% for key,label in doc_types.items() %}
+{% set d = docmap.get(key) %}
+<div class="panel doc-card"><div class="doc-top"><div class="doc-icon">AI</div><span class="pill {{ 'good' if d and d.ai_status == 'Passed checks' else 'bad' if d and d.ai_status == 'Invalid' else 'pending' }}">{{ d.ai_status if d else 'Not uploaded' }}</span></div>
+<h3>{{ label }}</h3>
+{% if d %}<p class="small muted">{{ d.original_name }}</p><p class="small">{{ d.ai_reason }}</p>{% else %}<p class="small muted">PDF, PNG, JPG or JPEG · Max 12 MB</p>{% endif %}
+<form class="upload-form" method="post" enctype="multipart/form-data" action="{{ url_for('upload_document', doc_type=key) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="file" name="document" accept=".pdf,.png,.jpg,.jpeg" required><button class="secondary full" type="submit">{{ 'Replace & AI Verify' if d else 'Upload & AI Verify' }}</button><p class="small muted upload-status" aria-live="polite">AI checks start automatically after selecting and uploading the file.</p></form></div>
+{% endfor %}
+</div>
+<div class="panel biometric-panel">
+  <div class="section-head"><div><div class="eyebrow">IDENTITY VERIFICATION</div><h2>Webcam Face Authentication <span class="pill pending">Demo Mode</span></h2><p class="muted">Capture a webcam photo. The AI only checks that a human face is present; the photo is then stored for the administrator.</p></div><span class="pill {{ 'good' if biometric and biometric.status in ['Matched','Captured'] else 'bad' if biometric and biometric.status == 'Face not detected' else 'pending' }}">{{ biometric.status if biometric else 'Not captured' }}</span></div>
+  {% if True %}
+    <div class="camera-layout">
+      <div class="camera-stage"><video id="webcamVideo" autoplay playsinline muted hidden></video><canvas id="webcamCanvas" hidden></canvas><div id="cameraPlaceholder" class="camera-placeholder"><div class="camera-symbol">◎</div><strong>Camera is off</strong><span class="small muted">Click “Turn on camera” to begin</span></div></div>
+      <div class="camera-controls"><button type="button" class="secondary full" id="startCamera">◎ Turn on camera</button><label class="consent-row"><input type="checkbox" id="biometricConsent"> I consent to capturing and storing this webcam photo for the demonstration and administrator review.</label><button type="button" class="primary full" id="captureFace" disabled>◉ Capture Photo</button><p id="biometricMessage" class="small muted" aria-live="polite">Allow camera permission when your browser asks.</p><p class="small muted">Use one person in the frame, face the camera and ensure good lighting. Camera access requires localhost or HTTPS.</p></div>
+    </div>
+  {% endif %}
+  {% if biometric %}<p class="small {{ 'success-text' if biometric.status in ['Matched','Captured'] else 'muted' }}"><strong>Result:</strong> {{ biometric.reason }}</p>{% endif %}
+</div>
+<div class="bottom-action"><div><strong>Ready for final review?</strong><p class="muted small">Check all required documents before submitting to the administrator.</p></div><a class="primary button-link" href="{{ url_for('review') }}">Go to review page</a></div>
+{% endif %}
+<script>
+const startCameraButton = document.getElementById('startCamera');
+const captureFaceButton = document.getElementById('captureFace');
+const video = document.getElementById('webcamVideo');
+const canvas = document.getElementById('webcamCanvas');
+const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+const biometricMessage = document.getElementById('biometricMessage');
+const biometricConsent = document.getElementById('biometricConsent');
+let cameraStream = null;
+if (startCameraButton && captureFaceButton && video && canvas) {
+  startCameraButton.addEventListener('click', async () => {
+    try {
+      cameraStream = await navigator.mediaDevices.getUserMedia({video: {facingMode: 'user'}, audio: false});
+      video.srcObject = cameraStream;
+      video.hidden = false;
+      cameraPlaceholder.hidden = true;
+      captureFaceButton.disabled = !biometricConsent.checked;
+      startCameraButton.textContent = 'Camera is on';
+      biometricMessage.textContent = 'Position your face in the centre, then click Capture Photo.';
+    } catch (error) {
+      biometricMessage.style.color = '#b42332';
+      if (error && (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError')) {
+        biometricMessage.textContent = 'Camera permission was denied. Please enable the camera (click the lock/camera icon in the address bar, set Camera to Allow) and click Turn on camera again.';
+      } else if (error && (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError')) {
+        biometricMessage.textContent = 'No camera was found on this device. Connect a webcam and try again.';
+      } else {
+        biometricMessage.textContent = 'Camera could not start: ' + ((error && error.message) || 'please allow camera permission and use localhost/HTTPS.');
+      }
+    }
+  });
+  biometricConsent.addEventListener('change', () => { captureFaceButton.disabled = !cameraStream || !biometricConsent.checked; });
+  captureFaceButton.addEventListener('click', async () => {
+    if (!biometricConsent.checked) { biometricMessage.textContent = 'Please provide consent before capturing.'; return; }
+    if (!video.videoWidth) { biometricMessage.textContent = 'Wait until the camera preview appears.'; return; }
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageData = canvas.toDataURL('image/jpeg', 0.9);
+    const formData = new FormData();
+    formData.append('_csrf', '{{ csrf_token() }}');
+    formData.append('image_data', imageData);
+    formData.append('consent', biometricConsent.checked ? 'yes' : 'no');
+    captureFaceButton.disabled = true;
+    biometricMessage.textContent = 'Saving photo and checking for a human face…';
+    try {
+      const response = await fetch('{{ url_for("biometric_verify") }}', {method: 'POST', body: formData});
+      const result = await response.json();
+      biometricMessage.textContent = result.message || 'Capture could not be completed.';
+      if (result.ok) {
+        biometricMessage.textContent += ' Photo stored - you can continue to final review and submit.';
+        biometricMessage.style.color = '#087a52';
+      } else {
+        biometricMessage.textContent += ' Please capture again.';
+        biometricMessage.style.color = '#b42332';
+      }
+    } catch (error) {
+      biometricMessage.textContent = 'Verification request failed. Refresh and try again.';
+    } finally {
+      captureFaceButton.disabled = false;
+    }
+  });
+  window.addEventListener('beforeunload', () => { if (cameraStream) cameraStream.getTracks().forEach(track => track.stop()); });
+}
+document.querySelectorAll('.upload-form').forEach(form => {
+  form.addEventListener('submit', () => {
+    const button = form.querySelector('button[type="submit"]');
+    const status = form.querySelector('.upload-status');
+    if (button) { button.disabled = true; button.textContent = 'Uploading & checking…'; }
+    if (status) status.textContent = 'Reading text, identifying document type and checking relevant dates. Please wait…';
+  });
+});
+</script>
+{% endblock %}
